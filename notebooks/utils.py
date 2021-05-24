@@ -175,10 +175,16 @@ class GumbelClassifier(pl.LightningModule):
 
             self.logit_enc = (self.alpha) * self.logit_enc.detach() + (1-self.alpha) * pre_enc
             
-        gumbel = training_phase
-        subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = gumbel, device = self.device)
+            gumbel = training_phase
+            subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = gumbel, device = self.device)
 
-        x = x * subset_indices
+            x = x * subset_indices
+        else:
+            mask = torch.zeros_like(x)
+            mask.index_fill_(1, self.markers(), 1)
+
+            x = x * mask
+
         h1 = self.encoder(x)
         # en
         return h1
@@ -432,9 +438,18 @@ class VAE_Gumbel(VAE):
         )
         
     def encode(self, x, training_phase = False):
+
         w = self.weight_creator(x)
-        self.subset_indices = sample_subset(w, self.k, self.t, gumbel = training_phase, device = self.device)
-        x = x * self.subset_indices
+        if training_phase:
+            self.subset_indices = sample_subset(w, self.k, self.t, gumbel = training_phase, device = self.device)
+            x = x * self.subset_indices
+        else:
+            markers = torch.argsort(w, dim = 1)[:, :self.k]
+            mask = torch.zeros_like(x)
+            # for each of the markers   
+            mask[torch.arange(markers.shape[0]).view(-1, 1).repeat(1, markers.shape[1]).flatten(), markers.flatten()]=1
+            x = x * mask
+
         h1 = self.encoder(x)
         return self.enc_mean(h1), self.enc_logvar(h1)
 
@@ -470,7 +485,11 @@ class VAE_Gumbel_NInsta(VAE_Gumbel):
         self.method = method
 
 
-    def encode(self, x, training_phase = False):
+    def encode(self, x, training_phase = False, hard_subset = True):
+        if training_phase and hard_subset:
+            raise Exception("Cannot non-differentiable subset selection during training")
+
+
         w0 = self.weight_creator(x)
 
         if self.method == 'mean':
@@ -480,10 +499,25 @@ class VAE_Gumbel_NInsta(VAE_Gumbel):
         else:
             raise Exception("Invalid aggregation method inside batch of Non instancewise Gumbel")
 
-        self.subset_indices = sample_subset(w, self.k, self.t, gumbel = training_phase, device = self.device)
-        x = x * self.subset_indices
+        if not hard_subset:
+            self.subset_indices = sample_subset(w, self.k, self.t, gumbel = training_phase, device = self.device)
+            x = x * self.subset_indices
+        else: 
+            markers = torch.argsort(w.flatten(), descending = True)[:self.k]
+            mask = torch.zeros_like(x)
+            mask.index_fill_(1, markers, 1)
+            x = x * mask
+
         h1 = self.encoder(x)
         return self.enc_mean(h1), self.enc_logvar(h1)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        mu_x, logvar_x, mu_latent, logvar_latent = self.forward(x, training_phase = True, hard_subset = False)
+        loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        self.log('train_loss', loss)
+        return loss
+
 
 
 # idea of having a Non Instance Wise Gumbel that also has a state to keep consistency across batches
@@ -504,9 +538,15 @@ class VAE_Gumbel_GlobalGate(VAE):
         self.burned_in = False
 
     def encode(self, x, training_phase = False):
-        subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = training_phase, device = self.device)
+        if training_phase:
+            subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = training_phase, device = self.device)
 
-        x = x * subset_indices
+            x = x * subset_indices
+        else:
+            mask = torch.zeros_like(x)
+            mask.index_fill_(1, self.markers(), 1)
+            x = x * mask
+
         h1 = self.encoder(x)
         # en
         return self.enc_mean(h1), self.enc_logvar(h1)
@@ -590,10 +630,15 @@ class VAE_Gumbel_RunningState(VAE_Gumbel):
             self.logit_enc = (self.alpha) * self.logit_enc.detach() + (1-self.alpha) * pre_enc
             
 
-        gumbel = training_phase
-        subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = gumbel, device = self.device)
+            gumbel = training_phase
+            subset_indices = sample_subset(self.logit_enc, self.k, self.t, gumbel = gumbel, device = self.device)
+            x = x * subset_indices
+        else:
+            mask = torch.zeros_like(x)
+            mask.index_fill_(1, self.markers(), 1)
+            x = x * mask
 
-        x = x * subset_indices
+
         h1 = self.encoder(x)
         # en
         return self.enc_mean(h1), self.enc_logvar(h1) 
@@ -637,15 +682,13 @@ class ConcreteVAE_NMSL(VAE):
     def encode(self, x, training_phase = False):
         if training_phase:
             w = gumbel_keys(self.logit_enc, EPSILON = torch.finfo(torch.float32).eps)
+            w = torch.softmax(w/self.t, dim = -1)
+            # safe here because we do not use it in computation, only reference
+            self.subset_indices = w.clone().detach()
+            x = x.mm(w.transpose(0, 1))
         else:
-            w = self.logit_enc
+            x = x[:, markers]
 
-        w = torch.softmax(w/self.t, dim = -1)
-
-        # safe here because we do not use it in computation, only reference
-        self.subset_indices = w.clone().detach()
-
-        x = x.mm(w.transpose(0, 1))
         h1 = self.encoder(x)
         # en
         return self.enc_mean(h1), self.enc_logvar(h1)
@@ -991,6 +1034,7 @@ def train_save_model(model, train_data, val_data, base_path, gpus, min_epochs, m
 
 def load_model(module_class, checkpoint_path):
     model = module_class.load_from_checkpoint(checkpoint_path)
+    model.eval()
     return model
 
 
