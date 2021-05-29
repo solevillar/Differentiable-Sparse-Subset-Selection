@@ -296,7 +296,6 @@ class VAE(pl.LightningModule):
         self.log('val_loss', loss)
         return loss
 
-
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr = self.lr)
 
@@ -311,6 +310,13 @@ class VAE_l1_diag(VAE):
         # because cannot instantiate normal with it
         self.diag = nn.Parameter(torch.normal(torch.zeros(input_size, device = self.device), 
                                  torch.ones(input_size, device = self.device)).requires_grad_(True))
+
+    # feature standard deviations
+    def markers(self, feature_std, k):
+        assert self.diag.shape[0] == feature_std.shape[0]
+
+        return torch.argsort(self.diag.abs()/feature_std, descending = True)[:k]
+        
         
     def encode(self, x):
         self.selection_layer = torch.diag(self.diag)
@@ -687,7 +693,7 @@ class ConcreteVAE_NMSL(VAE):
             self.subset_indices = w.clone().detach()
             x = x.mm(w.transpose(0, 1))
         else:
-            x = x[:, markers]
+            x = x[:, self.markers()]
 
         h1 = self.encoder(x)
         # en
