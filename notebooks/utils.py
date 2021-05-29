@@ -14,7 +14,6 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import math
 
 import gc
-import random
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -203,7 +202,7 @@ class GumbelClassifier(pl.LightningModule):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
 
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
@@ -475,7 +474,7 @@ class VAE_Gumbel(VAE):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
         self.log("epoch_avg_train_loss", loss)
@@ -573,7 +572,7 @@ class VAE_Gumbel_GlobalGate(VAE):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
         self.log("epoch_avg_train_loss", loss)
@@ -715,7 +714,7 @@ class ConcreteVAE_NMSL(VAE):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
 
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
