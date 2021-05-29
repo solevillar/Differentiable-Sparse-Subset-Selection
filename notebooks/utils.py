@@ -335,61 +335,29 @@ def gumbel_keys(w, EPSILON):
 #equations 3 and 4 and 5
 # separate true is for debugging
 def continuous_topk(w, k, t, device, separate=False, EPSILON = EPSILON):
-    khot_list = []
-    onehot_approx = torch.zeros_like(w, dtype = torch.float32, device = device)
-    #print('w at start after adding gumbel noise')
-    #print(w)
-    for i in range(k):
-        ### conver the following into pytorch
-        ## ORIGINAL: khot_mask = tf.maximum(1.0 - onehot_approx, EPSILON)
-        max_mask = (1 - onehot_approx) < EPSILON
-        khot_mask = 1 - onehot_approx
-        khot_mask[max_mask] = EPSILON
-        
-        ### t has to be close enough to zero for this to lower the logit of the previously selected thing enough
-        ### otherwise it might select the same thing again
-        ### and the pattern repeats if the max w values were separate enough from all the others
-        
-        #If debugging, uncomment these print statements
-        #and return as separate to see how the logits are updated
-        
-        # to see if the update is big enough
-        #print('Log at max values / also delta w (ignore first print since nothing updating)')
-        #print(torch.log(khot_mask)[::, w.argsort(descending=True)])
-        
-        # does not matter if this is in-place or not because gumbel_keys happens before this
-        # and creates a temporary buffer so that the model weights are not edited in place
-        # make not in place just to be safe for a run
-        w = w + torch.log(khot_mask)
-        
-        #print('w')
-        #print(w)
-        # to track updates
-        #print("max w indices")
-        #print(w.argsort(descending=True))
-        # to see if the update is big enough
-        #print('max w values')
-        #print(w[::, w.argsort(descending=True)])
-        
-        
-        # as in the note above about t,
-        # if the differences here are not separate enough
-        # might get a sitaution where the same index is selected again
-        # because a flat distribution here will update all logits about the same
-        
-        # ORIGINAL: onehot_approx = tf.nn.softmax(w / t, axis=-1)
-        onehot_approx = F.softmax(w/t, dim = -1, dtype = torch.float32)
-        
-        # to see if this is flat or not
-        #print("One hot approx")
-        #print(onehot_approx)
-        
-        khot_list.append(onehot_approx)
     if separate:
+        khot_list = []
+        onehot_approx = torch.zeros_like(w, dtype = torch.float32, device = device)
+        for i in range(k):
+            max_mask = (1 - onehot_approx) < EPSILON
+            khot_mask = 1 - onehot_approx
+            khot_mask[max_mask] = EPSILON
+            w = w + torch.log(khot_mask)
+            onehot_approx = F.softmax(w/t, dim = -1)
+            khot_list.append(onehot_approx)
         return torch.stack(khot_list)
     else:
-        return torch.sum(torch.stack(khot_list), dim = 0) 
+        relaxed_k = torch.zeros_like(w, dtype = torch.float32, device = device)
+        onehot_approx = torch.zeros_like(w, dtype = torch.float32, device = device)
+        for i in range(k):
+            max_mask = (1 - onehot_approx) < EPSILON
+            khot_mask = 1 - onehot_approx
+            khot_mask[max_mask] = EPSILON
+            w = w + torch.log(khot_mask)
+            onehot_approx = F.softmax(w/t, dim = -1)
+            relaxed_k = relaxed_k + onehot_approx
 
+        return relaxed_k
 
 # separate true is for debugging
 # good default value of t looks lke 0.0001
