@@ -144,7 +144,7 @@ class GumbelClassifier(pl.LightningModule):
 
         self.method = method
         self.k = k
-        self.t = t
+        self.register_buffer('t', torch.as_tensor(1.0 * t))
         self.temperature_decay = temperature_decay
         self.lr = lr
         self.bias = bias
