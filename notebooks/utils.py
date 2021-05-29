@@ -335,6 +335,7 @@ def gumbel_keys(w, EPSILON):
 #equations 3 and 4 and 5
 # separate true is for debugging
 def continuous_topk(w, k, t, device, separate=False, EPSILON = EPSILON):
+    # https://github.com/ermongroup/subsets/blob/master/subsets/sample_subsets.py 
     if separate:
         khot_list = []
         onehot_approx = torch.zeros_like(w, dtype = torch.float32, device = device)
@@ -346,6 +347,7 @@ def continuous_topk(w, k, t, device, separate=False, EPSILON = EPSILON):
             onehot_approx = F.softmax(w/t, dim = -1)
             khot_list.append(onehot_approx)
         return torch.stack(khot_list)
+    # https://github.com/ermongroup/subsets/blob/master/subsets/knn/sorting_operator.py
     else:
         relaxed_k = torch.zeros_like(w, dtype = torch.float32, device = device)
         onehot_approx = torch.zeros_like(w, dtype = torch.float32, device = device)
@@ -356,7 +358,6 @@ def continuous_topk(w, k, t, device, separate=False, EPSILON = EPSILON):
             w = w + torch.log(khot_mask)
             onehot_approx = F.softmax(w/t, dim = -1)
             relaxed_k = relaxed_k + onehot_approx
-
         return relaxed_k
 
 # separate true is for debugging
