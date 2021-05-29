@@ -1035,8 +1035,10 @@ def save_model(trainer, base_path):
 
 
 
-def train_save_model(model, train_data, val_data, base_path, gpus, min_epochs, max_epochs, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', early_stopping_patience=3, num_lr_rates = 100):
-    trainer = train_model(model, train_data, val_data, gpus, min_epochs = min_epochs, max_epochs = max_epochs, auto_lr = auto_lr, max_lr = max_lr, lr_explore_mode = lr_explore_mode, 
+def train_save_model(model, train_data, val_data, base_path, min_epochs, max_epochs, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', early_stopping_patience=3, num_lr_rates = 100,
+        gpus = None, tpu_cores = None):
+    trainer = train_model(model, train_data, val_data, gpus=gpus, tpu_cores=tpu_cores, 
+            min_epochs = min_epochs, max_epochs = max_epochs, auto_lr = auto_lr, max_lr = max_lr, lr_explore_mode = lr_explore_mode, 
             early_stopping_patience=early_stopping_patience, num_lr_rates = 100)
     save_model(trainer, base_path)
 
