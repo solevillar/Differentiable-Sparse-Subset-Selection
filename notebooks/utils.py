@@ -100,6 +100,8 @@ class GumbelClassifier(pl.LightningModule):
     def __init__(self, input_size, hidden_layer_size, z_size, num_classes, k, t = 2, temperature_decay = 0.9, method = 'mean', alpha = 0.99, bias = True, lr = 0.000001):
         super(GumbelClassifier, self).__init__()
         self.save_hyperparameters()
+        assert temperature_decay > 0
+        assert temperature_decay <= 1
 
 
         self.encoder = nn.Sequential(
@@ -384,6 +386,8 @@ class VAE_Gumbel(VAE):
     def __init__(self, input_size, hidden_layer_size, z_size, k, t = 2, temperature_decay = 0.9, bias = True, lr = 0.000001, kl_beta = 0.1):
         super(VAE_Gumbel, self).__init__(input_size, hidden_layer_size, z_size, bias = bias, lr = lr, kl_beta = kl_beta)
         self.save_hyperparameters()
+        assert temperature_decay > 0
+        assert temperature_decay <= 1
         
         self.k = k
         self.register_buffer('t', torch.as_tensor(1.0 * t))
@@ -645,6 +649,8 @@ class ConcreteVAE_NMSL(VAE):
         # k because encoder actually uses k features as its input because of how concrete VAE picks it out
         super(ConcreteVAE_NMSL, self).__init__(k, hidden_layer_size, z_size, output_size = input_size, bias = bias, lr = lr, kl_beta = kl_beta)
         self.save_hyperparameters()
+        assert temperature_decay > 0
+        assert temperature_decay <= 1
         
         self.k = k
         self.register_buffer('t', torch.as_tensor(1.0 * t))
