@@ -965,11 +965,11 @@ def test_joint(df, model1, model2, epoch, batch_size):
 
 
 def train_model(model, train_dataloader, val_dataloader, gpus = None, tpu_cores = None, min_epochs = 50, 
-        max_epochs = 600, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', num_lr_rates = 100, early_stopping_patience=3):
+        max_epochs = 600, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', num_lr_rates = 100, early_stopping_patience=3, precision = 32):
 
     assert max_epochs > 50
     early_stopping_callback = EarlyStopping(monitor='val_loss', mode = 'min', patience = early_stopping_patience)
-    trainer = pl.Trainer(gpus = gpus, tpu_cores = tpu_cores, min_epochs = min_epochs, max_epochs = max_epochs, auto_lr_find=auto_lr, callbacks=[early_stopping_callback])
+    trainer = pl.Trainer(gpus = gpus, tpu_cores = tpu_cores, min_epochs = min_epochs, max_epochs = max_epochs, auto_lr_find=auto_lr, callbacks=[early_stopping_callback], precision = precision)
     if auto_lr:
         # for some reason plural val_dataloaders
         lr_finder = trainer.tuner.lr_find(model, train_dataloader = train_dataloader, val_dataloaders = val_dataloader, max_lr = max_lr, mode = lr_explore_mode, num_training = num_lr_rates)
@@ -1004,10 +1004,10 @@ def save_model(trainer, base_path):
 
 
 def train_save_model(model, train_data, val_data, base_path, min_epochs, max_epochs, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', early_stopping_patience=3, num_lr_rates = 100,
-        gpus = None, tpu_cores = None):
+        gpus = None, tpu_cores = None, precision = 32):
     trainer = train_model(model, train_data, val_data, gpus=gpus, tpu_cores=tpu_cores, 
             min_epochs = min_epochs, max_epochs = max_epochs, auto_lr = auto_lr, max_lr = max_lr, lr_explore_mode = lr_explore_mode, 
-            early_stopping_patience=early_stopping_patience, num_lr_rates = 100)
+            early_stopping_patience=early_stopping_patience, num_lr_rates = 100, precision = precision)
     save_model(trainer, base_path)
 
 def load_model(module_class, checkpoint_path):
