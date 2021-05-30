@@ -319,7 +319,7 @@ class VAE_l1_diag(VAE):
         
     def encode(self, x):
         self.selection_layer = torch.diag(self.diag)
-        xprime = torch.mm(x, self.selection_layer)
+        xprime = x * self.diag
         h = self.encoder(xprime)
         return self.enc_mean(h), self.enc_logvar(h)
 
