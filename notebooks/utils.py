@@ -43,11 +43,8 @@ def make_encoder(input_size, hidden_layer_size, z_size, bias = True):
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
             nn.BatchNorm1d(hidden_layer_size),
-            nn.LeakyReLU(),
-            nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
-            # nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU()
-        )
+            )
 
     enc_mean = nn.Linear(hidden_layer_size, z_size, bias = bias)
     enc_logvar = nn.Linear(hidden_layer_size, z_size, bias = bias)
@@ -109,9 +106,6 @@ class GumbelClassifier(pl.LightningModule):
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
             nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
-            nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
-            # nn.BatchNorm1d(hidden_layer_size),
-            nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, z_size, bias = True),
             nn.BatchNorm1d(z_size),
             nn.LeakyReLU()
@@ -128,10 +122,6 @@ class GumbelClassifier(pl.LightningModule):
         
         self.weight_creator = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),
-            nn.BatchNorm1d(hidden_layer_size),
-            nn.LeakyReLU(),
-            nn.Dropout(),
-            nn.Linear(hidden_layer_size, hidden_layer_size),
             nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Dropout(),
@@ -382,6 +372,8 @@ def sample_subset(w, k, t, device, separate = False, gumbel = True, EPSILON = EP
 # L1 VAE model we are loading
 class VAE_Gumbel(VAE):
     def __init__(self, input_size, hidden_layer_size, z_size, k, t = 2, temperature_decay = 0.9, bias = True, lr = 0.000001, kl_beta = 0.1):
+        assert temperature_decay > 0
+        assert temperature_decay < 1
         super(VAE_Gumbel, self).__init__(input_size, hidden_layer_size, z_size, bias = bias, lr = lr, kl_beta = kl_beta)
         self.save_hyperparameters()
         
@@ -396,10 +388,6 @@ class VAE_Gumbel(VAE):
         # (values between -1 and 10 for first output seem fine)
         self.weight_creator = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),
-            nn.BatchNorm1d(hidden_layer_size),
-            nn.LeakyReLU(),
-            nn.Dropout(),
-            nn.Linear(hidden_layer_size, hidden_layer_size),
             nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Dropout(),
