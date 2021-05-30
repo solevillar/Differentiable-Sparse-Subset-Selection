@@ -318,7 +318,6 @@ class VAE_l1_diag(VAE):
         
         
     def encode(self, x):
-        self.selection_layer = torch.diag(self.diag)
         xprime = x * self.diag
         h = self.encoder(xprime)
         return self.enc_mean(h), self.enc_logvar(h)
@@ -1270,6 +1269,7 @@ def process_data(X, filter_data = False):
 def split_data_into_dataloaders(X, y, train_size, val_size, batch_size = 64, num_workers = 0, seed = None):
     assert train_size + val_size < 1
     assert len(X) == len(y)
+    assert batch_size > 1
     
     if seed is not None:
         np.random.seed(seed)
