@@ -33,6 +33,7 @@ log_interval = 20
 
 # rounding up lowest float32 on my system
 EPSILON = 1e-40
+MIN_TEMP = 0.0001
 
 
 def make_encoder(input_size, hidden_layer_size, z_size, bias = True):
@@ -97,7 +98,8 @@ class ExperimentIndices:
 
 
 class GumbelClassifier(pl.LightningModule):
-    def __init__(self, input_size, hidden_layer_size, z_size, num_classes, k, t = 2, temperature_decay = 0.9, method = 'mean', alpha = 0.99, bias = True, lr = 0.000001):
+    def __init__(self, input_size, hidden_layer_size, z_size, num_classes, k, t = 2, temperature_decay = 0.9, method = 'mean', alpha = 0.99, bias = True, lr = 0.000001,
+            min_temp = MIN_TEMP):
         super(GumbelClassifier, self).__init__()
         self.save_hyperparameters()
         assert temperature_decay > 0
@@ -147,6 +149,7 @@ class GumbelClassifier(pl.LightningModule):
         self.method = method
         self.k = k
         self.register_buffer('t', torch.as_tensor(1.0 * t))
+        self.min_temp = min_temp
         self.temperature_decay = temperature_decay
         self.lr = lr
         self.bias = bias
@@ -204,7 +207,7 @@ class GumbelClassifier(pl.LightningModule):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(self.min_temp, device = self.device), self.t * self.temperature_decay)
 
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
@@ -383,7 +386,7 @@ def sample_subset(w, k, t, device, separate = False, gumbel = True, EPSILON = EP
 
 # L1 VAE model we are loading
 class VAE_Gumbel(VAE):
-    def __init__(self, input_size, hidden_layer_size, z_size, k, t = 2, temperature_decay = 0.9, bias = True, lr = 0.000001, kl_beta = 0.1):
+    def __init__(self, input_size, hidden_layer_size, z_size, k, t = 2, temperature_decay = 0.9, bias = True, lr = 0.000001, kl_beta = 0.1, min_temp = MIN_TEMP):
         super(VAE_Gumbel, self).__init__(input_size, hidden_layer_size, z_size, bias = bias, lr = lr, kl_beta = kl_beta)
         self.save_hyperparameters()
         assert temperature_decay > 0
@@ -391,6 +394,7 @@ class VAE_Gumbel(VAE):
         
         self.k = k
         self.register_buffer('t', torch.as_tensor(1.0 * t))
+        self.min_temp = min_temp
         self.temperature_decay = temperature_decay
         
         # end with more positive to make logit debugging easier
@@ -446,7 +450,7 @@ class VAE_Gumbel(VAE):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(self.min_temp, device = self.device), self.t * self.temperature_decay)
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
         self.log("epoch_avg_train_loss", loss)
@@ -645,7 +649,7 @@ class VAE_Gumbel_RunningState(VAE_Gumbel):
 # NMSL is Not My Selection Layer
 # Implementing reference paper
 class ConcreteVAE_NMSL(VAE):
-    def __init__(self, input_size, hidden_layer_size, z_size, k, t = 0.01, temperature_decay = 0.99, bias = True, lr = 0.000001, kl_beta = 0.1):
+    def __init__(self, input_size, hidden_layer_size, z_size, k, t = 0.01, temperature_decay = 0.99, bias = True, lr = 0.000001, kl_beta = 0.1, min_temp = MIN_TEMP):
         # k because encoder actually uses k features as its input because of how concrete VAE picks it out
         super(ConcreteVAE_NMSL, self).__init__(k, hidden_layer_size, z_size, output_size = input_size, bias = bias, lr = lr, kl_beta = kl_beta)
         self.save_hyperparameters()
@@ -654,6 +658,7 @@ class ConcreteVAE_NMSL(VAE):
         
         self.k = k
         self.register_buffer('t', torch.as_tensor(1.0 * t))
+        self.min_temp = min_temp
         self.temperature_decay = temperature_decay
 
         self.logit_enc = nn.Parameter(torch.normal(torch.zeros(input_size*k, device = self.device), torch.ones(input_size*k, device = self.device)).view(k, -1).requires_grad_(True))
@@ -688,7 +693,7 @@ class ConcreteVAE_NMSL(VAE):
         return loss
 
     def training_epoch_end(self, training_step_outputs):
-        self.t = max(torch.as_tensor(0.001, device = self.device), self.t * self.temperature_decay)
+        self.t = max(torch.as_tensor(self.min_temp, device = self.device), self.t * self.temperature_decay)
 
 
         loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
