@@ -977,7 +977,7 @@ def test_joint(df, model1, model2, epoch, batch_size):
 def train_model(model, train_dataloader, val_dataloader, gpus = None, tpu_cores = None, min_epochs = 50, 
         max_epochs = 600, auto_lr = True, max_lr = 0.001, lr_explore_mode = 'exponential', num_lr_rates = 100, early_stopping_patience=3, precision = 32):
 
-    assert max_epochs > 50
+    assert max_epochs > min_epochs
     early_stopping_callback = EarlyStopping(monitor='val_loss', mode = 'min', patience = early_stopping_patience)
     trainer = pl.Trainer(gpus = gpus, tpu_cores = tpu_cores, min_epochs = min_epochs, max_epochs = max_epochs, auto_lr_find=auto_lr, callbacks=[early_stopping_callback], precision = precision)
     if auto_lr:
