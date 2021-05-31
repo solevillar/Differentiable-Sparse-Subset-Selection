@@ -311,7 +311,7 @@ class VAE_l1_diag(VAE):
     def training_step(self, batch, batch_idx):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self(x)
-        loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + torch.sum(self.diag ** 2)
+        loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + self.l1_lambda * torch.sum(self.diag ** 2)
         if torch.isnan(loss).any():
             raise Exception("nan loss during training")
         self.log('train_loss', loss)
@@ -321,7 +321,7 @@ class VAE_l1_diag(VAE):
         x, y = batch
         with torch.no_grad():
             mu_x, logvar_x, mu_latent, logvar_latent = self(x)
-            loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + torch.sum(self.diag ** 2)
+            loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + self.l1_lambda * torch.sum(self.diag ** 2)
         self.log('val_loss', loss)
         return loss
 
