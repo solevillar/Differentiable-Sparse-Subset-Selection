@@ -42,7 +42,7 @@ def make_encoder(input_size, hidden_layer_size, z_size, bias = True):
             nn.Linear(input_size, hidden_layer_size, bias = bias),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
-            nn.LeakyReLU()
+            nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
             nn.LeakyReLU()
             )
