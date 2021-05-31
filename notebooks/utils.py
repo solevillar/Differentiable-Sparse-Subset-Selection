@@ -103,13 +103,12 @@ class GumbelClassifier(pl.LightningModule):
 
         self.encoder = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size, bias = bias),
-            nn.BatchNorm1d(1* hidden_layer_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
-            nn.BatchNorm1d(hidden_layer_size),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, z_size, bias = True),
-            nn.BatchNorm1d(z_size),
             nn.LeakyReLU()
         )
 
