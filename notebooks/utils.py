@@ -297,14 +297,33 @@ class VAE(pl.LightningModule):
 
 
 class VAE_l1_diag(VAE):
-    def __init__(self, input_size, hidden_layer_size, z_size, bias = True, lr = 0.000001, kl_beta = 0.1):
+    def __init__(self, input_size, hidden_layer_size, z_size, bias = True, lr = 0.000001, kl_beta = 0.1, l1_lambda = 1):
         super(VAE_l1_diag, self).__init__(input_size, hidden_layer_size , z_size, bias = bias)
+        assert l1_lambda > 0
         self.save_hyperparameters()
+        self.l1_lambda = l1_lambda
         
         # using .to(device) even against pytorch lightning recs 
         # because cannot instantiate normal with it
         self.diag = nn.Parameter(torch.normal(torch.zeros(input_size, device = self.device), 
                                  torch.ones(input_size, device = self.device)).requires_grad_(True))
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        mu_x, logvar_x, mu_latent, logvar_latent = self(x)
+        loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + torch.sum(self.diag ** 2)
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
+        self.log('train_loss', loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        with torch.no_grad():
+            mu_x, logvar_x, mu_latent, logvar_latent = self(x)
+            loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) + torch.sum(self.diag ** 2)
+        self.log('val_loss', loss)
+        return loss
 
     # feature standard deviations
     def markers(self, feature_std, k):
