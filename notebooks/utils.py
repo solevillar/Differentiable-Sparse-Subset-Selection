@@ -190,6 +190,8 @@ class GumbelClassifier(pl.LightningModule):
         x, y = batch
         log_probs = self.forward(x, training_phase = True)
         loss = self.loss_function(log_probs, y)
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
@@ -276,6 +278,8 @@ class VAE(pl.LightningModule):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self(x)
         loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
@@ -429,6 +433,8 @@ class VAE_Gumbel(VAE):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self.forward(x, training_phase = True)
         loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
@@ -479,6 +485,8 @@ class VAE_Gumbel_NInsta(VAE_Gumbel):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self.forward(x, training_phase = True, hard_subset = False)
         loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
@@ -527,6 +535,8 @@ class VAE_Gumbel_GlobalGate(VAE):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self.forward(x, training_phase = True)
         loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
@@ -672,6 +682,8 @@ class ConcreteVAE_NMSL(VAE):
         x, y = batch
         mu_x, logvar_x, mu_latent, logvar_latent = self.forward(x, training_phase = True)
         loss = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
         self.log('train_loss', loss)
         return loss
 
