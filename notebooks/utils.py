@@ -40,8 +40,10 @@ def make_encoder(input_size, hidden_layer_size, z_size, bias = True):
 
     main_enc = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size, bias = bias),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size, bias = bias),
             nn.LeakyReLU()
@@ -74,12 +76,14 @@ def make_gaussian_decoder(output_size, hidden_size, z_size, bias = True):
 
     main_dec = nn.Sequential(
             nn.Linear(z_size, 1*hidden_size, bias = bias),
+            nn.BatchNorm1d(hidden_size),
             nn.LeakyReLU(),
             nn.Linear(1*hidden_size, output_size, bias = bias),
         )
 
     dec_logvar = nn.Sequential(
             nn.Linear(z_size, hidden_size, bias = bias),
+            nn.BatchNorm1d(hidden_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_size, output_size, bias = bias)
             )
@@ -123,9 +127,11 @@ class GumbelClassifier(pl.LightningModule):
         
         self.weight_creator = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Dropout(),
             nn.Linear(hidden_layer_size, hidden_layer_size),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size),
             nn.LeakyReLU(),
@@ -414,9 +420,11 @@ class VAE_Gumbel(VAE):
         # (values between -1 and 10 for first output seem fine)
         self.weight_creator = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Dropout(),
             nn.Linear(hidden_layer_size, hidden_layer_size),
+            nn.BatchNorm1d(hidden_layer_size),
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size),
             nn.LeakyReLU(),
