@@ -39,7 +39,7 @@ MIN_TEMP = 0.0001
 
 def form_block(in_size, out_size, batch_norm = True, bias = True):
     layers = []
-    layers.append(nn.Linear(in_size, out_size, bias = bias)
+    layers.append(nn.Linear(in_size, out_size, bias = bias))
     if batch_norm:
         layers.append(nn.BatchNorm1d(out_size))
     layers.append(nn.LeakyReLU())
