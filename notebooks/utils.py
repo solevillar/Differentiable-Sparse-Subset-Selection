@@ -1165,12 +1165,13 @@ def confusion_matrix_orig_recon(train_data, train_labels, test_data, test_labels
 
 # new set of functions from wrapping everything up
 
-def new_model_metrics(train_x, train_y, test_x, test_y, markers = None):
+def new_model_metrics(train_x, train_y, test_x, test_y, markers = None, model = None):
     if markers is not None:
         train_x = train_x[:, markers]
         test_x = test_x[:, markers]
 
-    model = RandomForestClassifier()
+    if model is None:
+        model = RandomForestClassifier()
     model.fit(train_x, train_y)
     pred_y = model.predict(test_x)
     train_rep = classification_report(train_y, model.predict(train_x), output_dict=True)
