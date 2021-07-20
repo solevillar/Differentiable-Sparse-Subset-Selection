@@ -1177,6 +1177,8 @@ def new_model_metrics(train_x, train_y, test_x, test_y, markers = None, model = 
     train_rep = classification_report(train_y, model.predict(train_x), output_dict=True)
     test_rep = classification_report(test_y, pred_y, output_dict=True)
     cm = confusion_matrix(test_y, pred_y)
+    if cm is None:
+        raise("Some error in generating confusion matrix"
     misclass_rate = 1 - accuracy_score(test_y, pred_y)
     return misclass_rate, test_rep, cm
 
@@ -1228,8 +1230,76 @@ def graph_umap_embedding(data, labels, title, encoder):
     cbar.ax.set_yticklabels(encoder.classes_)
     
     plt.title(title)
-
     plt.show()
+
+
+def plot_confusion_matrix(cm,
+                          target_names,
+                          title='Confusion matrix',
+                          cmap=None,
+                          save_path = None,
+                          normalize=True):
+    """
+    given a sklearn confusion matrix (cm), make a nice plot
+
+    Arguments
+    ---------
+    cm:           confusion matrix from sklearn.metrics.confusion_matrix
+
+    target_names: given classification classes such as [0, 1, 2]
+                  the class names, for example: ['high', 'medium', 'low']
+
+    title:        the text to display at the top of the matrix
+
+    cmap:         the gradient of the values displayed from matplotlib.pyplot.cm
+                  see http://matplotlib.org/examples/color/colormaps_reference.html
+                  plt.get_cmap('jet') or plt.cm.Blues
+
+    normalize:    If False, plot the raw numbers
+                  If True, plot the proportions
+
+    Usage
+    -----
+    plot_confusion_matrix(cm           = cm,                  # confusion matrix created by
+                                                              # sklearn.metrics.confusion_matrix
+                          normalize    = True,                # show proportions
+                          target_names = y_labels_vals,       # list of names of the classes
+                          title        = best_estimator_name) # title of graph
+
+    Citiation
+    ---------
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+    """
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8, 6))
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    #plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    sns.heatmap(cm, annot=True,cmap=cmap)
+    plt.title(title)
+    #plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks+0.5, target_names, rotation=45)
+        plt.yticks(tick_marks + 0.5, target_names, rotation = 45)
+
+    
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.2f}; misclass={:0.2f}'.format(accuracy, misclass))
+    
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()
+
 
 ###
     
@@ -1322,7 +1392,7 @@ def split_data_into_dataloaders(X, y, train_size, val_size, batch_size = 64, num
     return train_dataloader, val_dataloader, test_dataloader, train_indices, val_indices, test_indices
 
 
-def generate_synthetic_data_with_noise(N, z_size, D, D_noise = None):
+def generate_synthetic_data_with_noise(N, z_size, n_classes, D, D_noise = None):
     if not D_noise:
         D_noise = D
 
@@ -1331,6 +1401,11 @@ def generate_synthetic_data_with_noise(N, z_size, D, D_noise = None):
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     
     device = torch.device("cuda:0" if cuda else "cpu")
+
+
+    class_logit = torch.rand(s)
+    with torch.no_grad():
+        class_priors = torch.nn.functional.softmax(class_logit)
 
 
     latent_data = np.random.normal(loc=0.0, scale=1.0, size=N*z_size).reshape(N, z_size)
