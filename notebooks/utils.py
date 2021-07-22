@@ -1178,7 +1178,7 @@ def new_model_metrics(train_x, train_y, test_x, test_y, markers = None, model = 
     test_rep = classification_report(test_y, pred_y, output_dict=True)
     cm = confusion_matrix(test_y, pred_y)
     if cm is None:
-        raise("Some error in generating confusion matrix"
+        raise("Some error in generating confusion matrix")
     misclass_rate = 1 - accuracy_score(test_y, pred_y)
     return misclass_rate, test_rep, cm
 
