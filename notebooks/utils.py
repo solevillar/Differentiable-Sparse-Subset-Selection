@@ -1396,51 +1396,46 @@ def generate_synthetic_data_with_noise(N, z_size, n_classes, D, D_noise = None):
     if not D_noise:
         D_noise = D
 
-    cuda = True if torch.cuda.is_available() else False
+    if not D_noise:
+            D_noise = D
     
-    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-    
-    device = torch.device("cuda:0" if cuda else "cpu")
-
-
-    class_logit = torch.rand(s)
+    class_logit = torch.rand(n_classes)
     with torch.no_grad():
-        class_priors = torch.nn.functional.softmax(class_logit)
-
-
-    latent_data = np.random.normal(loc=0.0, scale=1.0, size=N*z_size).reshape(N, z_size)
-
+        class_priors = torch.nn.functional.softmax(class_logit, dim  = -1).numpy()
+    
+    class_samp = np.random.choice(a = np.arange(n_classes), size = N, p = class_priors)
+    
     data_mapper = nn.Sequential(
         nn.Linear(z_size, 2 * z_size, bias=False),
         nn.Tanh(),
         nn.Linear(2 * z_size, D, bias = True),
         nn.LeakyReLU()
-        ).to(device)
-
-    data_mapper.requires_grad_(False)
-
-    latent_data = Tensor(latent_data)
-    latent_data.requires_grad_(False)
-
-    actual_data = data_mapper(latent_data)
-    noise_features = torch.empty(N * D_noise).normal_(mean=0,std=0.01).reshape(N, D_noise).to(device)
-    noise_features.requires_grad_(False)
-
-
-    actual_data = torch.cat([actual_data, noise_features], dim = 1)
-
-
-    actual_data = actual_data.cpu().numpy()
-    scaler = MinMaxScaler()
-    actual_data = scaler.fit_transform(actual_data)
-
-    actual_data = Tensor(actual_data)
-
-    slices = np.random.permutation(np.arange(actual_data.shape[0]))
-    upto = int(.8 * len(actual_data))
+        )
     
-    train_data = actual_data[slices[:upto]]
-    test_data = actual_data[slices[upto:]]
+    data_mapper.requires_grad_(False)
+    stackss  = []
+    ys = []
+    class_numbers = np.bincount(class_samp)
+    for i in range(n_classes):
+        n_i = class_numbers[i]
+        mean = np.random.normal(0, 1)
+        var = np.random.uniform(0.5, 1.5)
+        latent_data = torch.normal(mean, var, size = (n_i, z_size))
+        stackss.append(latent_data)
+        ys.append(i * torch.ones(n_i))
+    
+    X = torch.cat(stackss)
+    Y = torch.cat(ys)
+    
+    data_mapper.requires_grad_(False)
+    X.requires_grad_(False)
+    X = data_mapper(X)
+    
+    
+    noise_features = torch.empty(N * D_noise).normal_(mean=0,std=0.3).reshape(N, D_noise)
+    X = torch.cat([X, noise_features], dim = 1)
+    
+    X = X.numpy()
+    Y = Y.numpy()
 
-    return train_data, test_data
-
+    return X, Y
