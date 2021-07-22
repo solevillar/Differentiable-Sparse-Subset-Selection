@@ -1392,13 +1392,13 @@ def split_data_into_dataloaders(X, y, train_size, val_size, batch_size = 64, num
     return train_dataloader, val_dataloader, test_dataloader, train_indices, val_indices, test_indices
 
 
-def generate_synthetic_data_with_noise(N, z_size, n_classes, D, D_noise = None):
+def generate_synthetic_data_with_noise(N, z_size, n_classes, D, D_noise = None, seed = None):
     if not D_noise:
         D_noise = D
 
-    if not D_noise:
-            D_noise = D
-    
+    if seed:
+        torch.manual_seed(seed)
+
     class_logit = torch.rand(n_classes)
     with torch.no_grad():
         class_priors = torch.nn.functional.softmax(class_logit, dim  = -1).numpy()
