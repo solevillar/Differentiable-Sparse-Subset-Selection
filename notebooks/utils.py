@@ -646,7 +646,60 @@ class VAE_Gumbel_RunningState(VAE_Gumbel):
 
         return inds_running_state
 
-    
+# not doing multiple inheritance because GumbelClassifier is repeating itself
+class RunningState_VAE_Classifier(VAE_Gumbel_RunningState):
+
+    def __init__(self, input_size, hidden_layer_size, z_size, num_classes, k, 
+            t = 0.01, temperature_decay = 0.99, method = 'mean', alpha = 0.9, 
+            bias = True, batch_norm = True, lr = 0.000001, kl_beta = 0.1, loss_tradeoff = 0.5):
+
+        
+        super(RunningState_VAE_Classifier, self).__init__(input_size = input_size, hidden_layer_size = hidden_layer_size, 
+                z_size = z_size, k = k, t = t, temperature_decay = temperature_decay, 
+                method = method, alpha = alpha, batch_norm = batch_norm, bias = bias, lr = lr, kl_beta = kl_beta)
+
+        self.save_hyperparameters()
+        self.num_classes = num_classes
+        self.loss_tradeoff = loss_tradeoff
+
+        self.classification_decoder = nn.Sequential(
+            *form_block(z_size, hidden_layer_size, bias = bias, batch_norm = batch_norm),
+            nn.Linear(1*hidden_layer_size, num_classes, bias = bias),
+            nn.LogSoftmax(dim = 1)
+        )
+        self.classification_loss = nn.NLLLoss(reduction = 'sum')
+
+        assert loss_tradeoff <= 1
+        assert loss_tradeoff >= 0
+
+
+    def decode(self, mu_z, z):
+        mu_x = self.decoder(z)
+        log_probs = self.classification_decoder(mu_z)
+        return mu_x, log_probs
+
+
+    def forward(self, x, training_phase = False):
+        mu_latent, logvar_latent = self.encode(x, training_phase = training_phase)
+        z = self.reparameterize(mu_latent, logvar_latent)
+        # mu_latent is used for the classifier and z for the VAE
+        mu_x, log_probs = self.decode(mu_latent, z)
+        logvar_x = self.dec_logvar(z)
+
+        return mu_x, logvar_x, log_probs, mu_latent, logvar_latent
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        mu_x, logvar_x, log_probs, mu_latent, logvar_latent = self.forward(x, training_phase = True)
+        loss_recon = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
+        # since using reduction sum for classification loss
+        loss_classification = self.classification_loss(log_probs, y) / x.size()[0]
+        loss = loss_tradeoff * loss_recon + (1-loss_tradeoff) * loss_classification
+        if torch.isnan(loss).any():
+            raise Exception("nan loss during training")
+        self.log('train_loss', loss)
+        return loss
+
 # NMSL is Not My Selection Layer
 # Implementing reference paper
 class ConcreteVAE_NMSL(VAE):
