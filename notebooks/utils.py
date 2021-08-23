@@ -694,7 +694,7 @@ class RunningState_VAE_Classifier(VAE_Gumbel_RunningState):
         loss_recon = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta) 
         # since using reduction sum for classification loss
         loss_classification = self.classification_loss(log_probs, y) / x.size()[0]
-        loss = loss_tradeoff * loss_recon + (1-loss_tradeoff) * loss_classification
+        loss = self.loss_tradeoff * loss_recon + (1-self.loss_tradeoff) * loss_classification
         if torch.isnan(loss).any():
             raise Exception("nan loss during training")
         self.log('train_loss', loss)
@@ -707,7 +707,7 @@ class RunningState_VAE_Classifier(VAE_Gumbel_RunningState):
             loss_recon = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta)
             loss_classification = self.classification_loss(log_probs, y) / x.size()[0]
             acc = (y == log_probs.max(dim=1)[1]).float().mean()
-            loss = loss_tradeoff * loss_recon + (1-loss_tradeoff) * loss_classification
+            loss = self.loss_tradeoff * loss_recon + (1-self.loss_tradeoff) * loss_classification
 
         self.log('val_loss', loss)
         self.log('val_acc', acc)
