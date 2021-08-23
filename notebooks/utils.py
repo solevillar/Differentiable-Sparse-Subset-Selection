@@ -700,6 +700,21 @@ class RunningState_VAE_Classifier(VAE_Gumbel_RunningState):
         self.log('train_loss', loss)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        with torch.no_grad():
+            mu_x, logvar_x, log_probs, mu_latent, logvar_latent = self.forward(x, training_phase = False)
+            loss_recon = loss_function_per_autoencoder(x, mu_x, logvar_x, mu_latent, logvar_latent, kl_beta = self.kl_beta)
+            loss_classification = self.classification_loss(log_probs, y) / x.size()[0]
+            acc = (y == log_probs.max(dim=1)[1]).float().mean()
+            loss = loss_tradeoff * loss_recon + (1-loss_tradeoff) * loss_classification
+
+        self.log('val_loss', loss)
+        self.log('val_acc', acc)
+        return loss
+
+
+
 # NMSL is Not My Selection Layer
 # Implementing reference paper
 class ConcreteVAE_NMSL(VAE):
